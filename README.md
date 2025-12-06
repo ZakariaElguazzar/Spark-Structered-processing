@@ -1,4 +1,4 @@
-```markdown
+
 # Rapport de Projet Big Data  
 Architecture Spark Streaming avec Docker et HDFS
 
@@ -91,24 +91,31 @@ services:
     ports:
       - "9870:9870"
       - "8020:8020"
-    
+
   spark-master:
     image: spark:latest
     hostname: spark-master
-    command: ["/opt/spark/bin/spark-class", 
-              "org.apache.spark.deploy.master.Master",
-              "--host", "spark-master", 
-              "--port", "7077", 
-              "--webui-port", "8080"]
-    ports: ["7077:7077", "8080:8080"]
-    depends_on: [namenode]
-```
+    command:
+      - "/opt/spark/bin/spark-class"
+      - "org.apache.spark.deploy.master.Master"
+      - "--host"
+      - "spark-master"
+      - "--port"
+      - "7077"
+      - "--webui-port"
+      - "8080"
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    depends_on:
+      - namenode
+````
 
 ### Configuration Hadoop
 
 Extrait des fichiers de configuration :
 
-```
+```text
 CORE-SITE.XML_fs.defaultFS=hdfs://namenode
 HDFS-SITE.XML_dfs.namenode.rpc-address=namenode:8020
 HDFS-SITE.XML_dfs.replication=3
@@ -122,7 +129,7 @@ YARN-SITE.XML_yarn.resourcemanager.hostname=resourcemanager
 
 ### Application de Streaming
 
-Classe Main.java :
+Classe `Main.java` :
 
 ```java
 public class Main {
@@ -130,27 +137,24 @@ public class Main {
         SparkSession ss = SparkSession.builder()
                 .appName("Structured streaming App")
                 .getOrCreate();
-        
+
         StructType schema = new StructType(new StructField[]{
-                new StructField("order_id", DataTypes.LongType, false, 
-                Metadata.empty()),
-                new StructField("client_id", DataTypes.LongType, false, 
-                Metadata.empty()),
-                new StructField("client_name", DataTypes.StringType, false, 
-                Metadata.empty()),
+                new StructField("order_id", DataTypes.LongType, false, Metadata.empty()),
+                new StructField("client_id", DataTypes.LongType, false, Metadata.empty()),
+                new StructField("client_name", DataTypes.StringType, false, Metadata.empty()),
                 // ... autres champs
         });
-        
+
         Dataset<Row> inputDF = ss.readStream()
                 .schema(schema)
                 .option("header", true)
                 .csv("hdfs://namenode:8020/data");
-        
+
         StreamingQuery query = inputDF.writeStream()
                 .format("console")
                 .outputMode(OutputMode.Append())
                 .start();
-        
+
         query.awaitTermination();
     }
 }
@@ -158,17 +162,17 @@ public class Main {
 
 ### Structure des Données
 
-| Champ | Type | Description |
-|-------|------|-------------|
-| order_id | Long | Identifiant unique de commande |
-| client_id | Long | Identifiant du client |
-| client_name | String | Nom du client |
-| product | String | Produit commandé |
-| quantity | Integer | Quantité |
-| price | Double | Prix unitaire |
-| order_date | String | Date de commande |
-| status | String | Statut de la commande |
-| total | Double | Total de la commande |
+| Champ       | Type    | Description                    |
+| ----------- | ------- | ------------------------------ |
+| order_id    | Long    | Identifiant unique de commande |
+| client_id   | Long    | Identifiant du client          |
+| client_name | String  | Nom du client                  |
+| product     | String  | Produit commandé               |
+| quantity    | Integer | Quantité                       |
+| price       | Double  | Prix unitaire                  |
+| order_date  | String  | Date de commande               |
+| status      | String  | Statut de la commande          |
+| total       | Double  | Total de la commande           |
 
 ---
 
@@ -176,45 +180,34 @@ public class Main {
 
 ### Étapes de Déploiement
 
-1. **Construction du Projet**
-   ```bash
-   mvn clean package
-   ```
+```bash
+# Construction du projet
+mvn clean package
 
-2. **Lancement de l'Infrastructure**
-   ```bash
-   docker compose up -d
-   ```
+# Lancement de l'infrastructure
+docker compose up -d
 
-3. **Copie des Données**
-   ```bash
-   docker cp orders1.csv namenode:/tmp/
-   docker cp orders2.csv namenode:/tmp/
-   docker cp orders3.csv namenode:/tmp/
-   ```
+# Copie des données
+docker cp orders1.csv namenode:/tmp/
+docker cp orders2.csv namenode:/tmp/
+docker cp orders3.csv namenode:/tmp/
 
-4. **Copie de l'Application**
-   ```bash
-   docker cp SparkLab5-1.0-SNAPSHOT.jar spark-master:/opt/spark/work-dir/
-   ```
+# Copie de l'application
+docker cp SparkLab5-1.0-SNAPSHOT.jar spark-master:/opt/spark/work-dir/
 
-5. **Transfert vers HDFS**
-   ```bash
-   # Dans le conteneur namenode
-   hdfs dfs -mkdir -p /data
-   hdfs dfs -put /tmp/orders1.csv /data/
-   hdfs dfs -put /tmp/orders2.csv /data/
-   hdfs dfs -put /tmp/orders3.csv /data/
-   ```
+# Transfert vers HDFS
+docker exec namenode hdfs dfs -mkdir -p /data
+docker exec namenode hdfs dfs -put /tmp/orders1.csv /data/
+docker exec namenode hdfs dfs -put /tmp/orders2.csv /data/
+docker exec namenode hdfs dfs -put /tmp/orders3.csv /data/
 
-6. **Exécution de l'Application Spark**
-   ```bash
-   /opt/spark/bin/spark-submit \
-       --master spark://spark-master:7077 \
-       --class org.example.Main \
-       /opt/spark/work-dir/SparkLab5-1.0-SNAPSHOT.jar \
-       hdfs://namenode:8020/data
-   ```
+# Exécution de l'application Spark
+docker exec spark-master /opt/spark/bin/spark-submit \
+    --master spark://spark-master:7077 \
+    --class org.example.Main \
+    /opt/spark/work-dir/SparkLab5-1.0-SNAPSHOT.jar \
+    hdfs://namenode:8020/data
+```
 
 ### Script d'Automatisation
 
@@ -248,7 +241,7 @@ docker exec spark-master /opt/spark/bin/spark-submit \
 
 ### Sortie de l'Application
 
-```
+```text
 -------------------------------------------
 Batch: 0
 -------------------------------------------
@@ -262,83 +255,70 @@ Batch: 0
 
 ### Interfaces de Surveillance
 
-**HDFS NameNode UI** (http://localhost:9870)
-- Vue d'ensemble du cluster HDFS
-- Exploration des fichiers
-- Surveillance des Datanodes
-
-**Spark Master UI** (http://localhost:8080)
-- Liste des applications en cours
-- Statut des Workers
-- Logs d'exécution
-
-**YARN ResourceManager UI** (http://localhost:8088)
-- Gestion des ressources
-- Historique des jobs
-- Métriques de performance
+* **HDFS NameNode UI** : [http://localhost:9870](http://localhost:9870)
+* **Spark Master UI** : [http://localhost:8080](http://localhost:8080)
+* **YARN ResourceManager UI** : [http://localhost:8088](http://localhost:8088)
 
 ### Performances Observées
 
-| Métrique | Valeur |
-|----------|--------|
-| Temps de démarrage du cluster | 2-3 minutes |
+| Métrique                          | Valeur      |
+| --------------------------------- | ----------- |
+| Temps de démarrage du cluster     | 2-3 minutes |
 | Latence de traitement des données | < 1 seconde |
-| Taux de réplication HDFS | 3 |
-| Mémoire allouée par exécuteur | 512MB |
-| Cœurs alloués | 2 |
+| Taux de réplication HDFS          | 3           |
+| Mémoire allouée par exécuteur     | 512MB       |
+| Cœurs alloués                     | 2           |
 
 ---
 
 ## Problèmes Rencontrés et Solutions
 
 ### Problème 1 : Accès à HDFS
-**Symptôme** : Erreur "Input path does not exist"  
-**Cause** : Chemin HDFS incorrect ou fichiers non présents  
-**Solution** : Vérification et correction du chemin, upload des fichiers
+
+* **Symptôme** : "Input path does not exist"
+* **Solution** : Vérification et correction du chemin HDFS, upload des fichiers
 
 ### Problème 2 : Compatibilité Java
-**Symptôme** : Erreurs de compatibilité avec Java 17  
-**Cause** : Spark 3.5.0 nécessite des flags spécifiques  
-**Solution** : Utilisation de Java 11 ou ajout des flags `--add-opens`
+
+* **Symptôme** : Erreurs avec Java 17
+* **Solution** : Utilisation de Java 11 ou ajout des flags `--add-opens`
 
 ### Problème 3 : Ressources Insuffisantes
-**Symptôme** : Containers qui redémarrent  
-**Cause** : Mémoire Docker insuffisante  
-**Solution** : Augmentation des ressources Docker à 4GB+
+
+* **Symptôme** : Containers qui redémarrent
+* **Solution** : Augmentation des ressources Docker à 4GB+
 
 ---
 
 ## Améliorations Possibles
 
 ### Améliorations Techniques
-1. **Ajout de Kafka** : Pour une ingestion de données en temps réel
-2. **Métriques Prometheus** : Surveillance avancée du cluster
-3. **Autoscaling** : Ajout automatique de workers selon la charge
-4. **Backup HDFS** : Configuration de snapshots réguliers
+
+1. Ajout de Kafka pour ingestion en temps réel
+2. Métriques Prometheus pour monitoring avancé
+3. Autoscaling des Workers
+4. Snapshots réguliers HDFS
 
 ### Améliorations Fonctionnelles
-1. **Traitement en temps réel** : Agrégations continues des ventes
-2. **Alertes** : Notification sur anomalies détectées
-3. **Dashboard** : Interface de visualisation des données
-4. **ML Integration** : Prédiction de tendances de vente
+
+1. Traitement en temps réel des ventes
+2. Alertes sur anomalies
+3. Dashboard de visualisation
+4. Intégration ML pour prédiction
 
 ### Scripts d'Amélioration
 
 ```bash
 #!/bin/bash
-# Monitoring avancé du cluster
 echo "📊 Monitoring du Cluster Big Data"
 echo "=================================="
 
-# Santé HDFS
 echo "🗂️ HDFS Health:"
 docker exec namenode hdfs dfsadmin -report | grep -A5 "Configured Capacity"
 
-# Statut Spark
 echo "⚡ Spark Status:"
 curl -s http://localhost:8080 | grep -E "(ALIVE|WORKERS|APPLICATIONS)" | head -5
 
-# Utilisation des ressources
 echo "💾 Resource Usage:"
 docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 ```
@@ -348,24 +328,24 @@ docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 ## Conclusion
 
 ### Bilan du Projet
-Le projet a permis de déployer avec succès une architecture Big Data complète utilisant :
-- Docker Compose pour l'orchestration des conteneurs
-- Hadoop HDFS pour le stockage distribué
-- Apache Spark pour le traitement des données
-- Structured Streaming pour le traitement en temps réel
+
+* Déploiement d'une architecture Big Data complète avec Docker Compose
+* Utilisation de Hadoop HDFS pour le stockage distribué
+* Traitement des données en temps réel avec Spark Structured Streaming
 
 ### Acquis Techniques
-- Maîtrise du déploiement Docker d'infrastructure Big Data
-- Développement d'applications Spark Streaming en Java
-- Gestion de HDFS et transfert de données
-- Surveillance et debugging d'applications distributées
+
+* Maîtrise du déploiement Docker
+* Développement Spark Streaming en Java
+* Gestion et transfert des données dans HDFS
+* Monitoring et debugging de clusters distribués
 
 ### Perspectives
-Cette architecture constitue une base solide pour des projets de traitement de données à grande échelle. Elle pourrait être étendue pour :
-- Traiter des volumes de données plus importants
-- Intégrer des sources de données variées
-- Implémenter des algorithmes de machine learning
-- Déployer en production avec haute disponibilité
+
+* Traiter des volumes plus importants
+* Intégrer diverses sources de données
+* Algorithmes ML sur les flux
+* Déploiement en production avec HA
 
 ---
 
@@ -374,19 +354,10 @@ Cette architecture constitue une base solide pour des projets de traitement de d
 ### Commandes Utiles
 
 ```bash
-# Voir les logs d'un service
 docker compose logs -f spark-master
-
-# Accéder à un conteneur
 docker exec -it namenode bash
-
-# Arrêter le cluster
 docker compose down
-
-# Redémarrer un service
 docker compose restart spark-worker-1
-
-# Nettoyer les conteneurs
 docker system prune -af
 ```
 
@@ -411,5 +382,4 @@ project/
 └── scripts/
     ├── deploy.sh
     └── monitor.sh
-```
 ```
